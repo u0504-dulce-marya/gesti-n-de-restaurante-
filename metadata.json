@@ -1,0 +1,6 @@
+{
+  "name": "Gestión de Restaurante",
+  "description": "Aplicación completa para la gestión integral de un restaurante: personal, clientes, chefs, platillos, comandas y ventas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
