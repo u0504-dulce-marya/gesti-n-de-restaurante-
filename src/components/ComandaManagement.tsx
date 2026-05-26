@@ -63,12 +63,48 @@ export default function ComandaManagement({
   // Filter Active vs Historical Comandas
   const activeComandas = comandas.filter(c => c.estado !== 'Entregado' && c.estado !== 'Cancelado');
 
+  // List of all possible tables/bars
+  const allMesas = React.useMemo(() => [
+    ...Array.from({ length: 15 }, (_, i) => `Mesa ${i + 1}`),
+    'Terraza 1',
+    'Terraza 2',
+    'Barra 1',
+    'Barra 2',
+  ], []);
+
+  // Set of occupied table names
+  const occupiedMesas = React.useMemo(() => {
+    const active = comandas.filter(c => c.estado !== 'Entregado' && c.estado !== 'Cancelado');
+    return new Set(active.map(c => c.numeroMesa));
+  }, [comandas]);
+
   // New Comanda state variables
-  const [numeroMesa, setNumeroMesa] = useState('Mesa 1');
+  const [numeroMesa, setNumeroMesa] = useState(() => {
+    const active = comandas.filter(c => c.estado !== 'Entregado' && c.estado !== 'Cancelado');
+    const occupied = new Set(active.map(c => c.numeroMesa));
+    const all = [
+      ...Array.from({ length: 15 }, (_, i) => `Mesa ${i + 1}`),
+      'Terraza 1',
+      'Terraza 2',
+      'Barra 1',
+      'Barra 2',
+    ];
+    return all.find(m => !occupied.has(m)) || 'Mesa 1';
+  });
   const [selectedCliente, setSelectedCliente] = useState(clientes[0]?.id || '');
   const [selectedCamarero, setSelectedCamarero] = useState(waiters[0]?.id || '');
   const [cart, setCart] = useState<{ [platilloId: string]: number }>({});
   const [notas, setNotas] = useState('');
+
+  // Automatically switch away if current selected table gets occupied while form is open
+  React.useEffect(() => {
+    if (showNewOrderForm && occupiedMesas.has(numeroMesa)) {
+      const nextAvailable = allMesas.find(m => !occupiedMesas.has(m));
+      if (nextAvailable) {
+        setNumeroMesa(nextAvailable);
+      }
+    }
+  }, [occupiedMesas, showNewOrderForm, numeroMesa, allMesas]);
 
   // Payment popup state
   const [payingComanda, setPayingComanda] = useState<Comanda | null>(null);
@@ -139,7 +175,8 @@ export default function ComandaManagement({
     });
 
     // Reset Form
-    setNumeroMesa('Mesa 1');
+    const nextAvailable = allMesas.find(m => !occupiedMesas.has(m));
+    setNumeroMesa(nextAvailable || 'Mesa 1');
     setCart({});
     setNotas('');
     setShowNewOrderForm(false);
@@ -261,13 +298,19 @@ export default function ComandaManagement({
                   onChange={(e) => setNumeroMesa(e.target.value)}
                   className="w-full p-2 bg-[#141414] border border-[#2a2a2a] rounded-lg text-xs font-semibold text-[#f5f2ed] focus:outline-none focus:border-[#c1a35f]"
                 >
-                  {Array.from({ length: 15 }, (_, i) => `Mesa ${i + 1}`).map(m => (
-                    <option key={m} className="bg-[#141414] text-[#f5f2ed]" value={m}>{m}</option>
-                  ))}
-                  <option className="bg-[#141414] text-[#f5f2ed]" value="Terraza 1">Terraza 1</option>
-                  <option className="bg-[#141414] text-[#f5f2ed]" value="Terraza 2">Terraza 2</option>
-                  <option className="bg-[#141414] text-[#f5f2ed]" value="Barra 1">Barra 1</option>
-                  <option className="bg-[#141414] text-[#f5f2ed]" value="Barra 2">Barra 2</option>
+                  {allMesas.map(m => {
+                    const isOccupied = occupiedMesas.has(m);
+                    return (
+                      <option 
+                        key={m} 
+                        className={`bg-[#141414] ${isOccupied ? 'text-red-400 font-medium' : 'text-[#f5f2ed]'}`} 
+                        value={m}
+                        disabled={isOccupied}
+                      >
+                        {m} {isOccupied ? '🔴 (Ocupada)' : '🟢 (Libre)'}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
